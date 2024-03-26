@@ -1,5 +1,3 @@
-const request = require("supertest");
-const assert = require("assert");
 const express = require("express");
 const app = express();
 
@@ -13,26 +11,25 @@ const app = express();
 // clears every one second
 
 let numberOfRequestsForUser = {};
+setInterval(() => {
+  numberOfRequestsForUser = {};
+}, 1000);
 
-function ratelimiter(req, res, next) {
-  const userId = req.headers['user-id'];
-  numberOfRequestsForUser[userId] = numberOfRequestsForUser[userId] || 0;
+app.use(function(req, res, next) {
+  const userId = req.headers["user-id"];
 
-
-  if (numberOfRequestsForUser[userId] >= 5) {
-    return res.status(404).json({ error: 'Rate limit exceeded' });
+  if (numberOfRequestsForUser[userId]) {
+    numberOfRequestsForUser[userId] = numberOfRequestsForUser[userId] + 1;
+    if (numberOfRequestsForUser[userId] > 5) {
+      res.status(404).send("no entry");
+    } else {
+      next();
+    }
+  } else {
+    numberOfRequestsForUser[userId] = 1;
+    next();
   }
-
-  numberOfRequestsForUser[userId]++;
-  
-  setTimeout(() => {
-    numberOfRequestsForUser[userId] = 0;
-  }, 1000);
-
-  next();
-}
-
-app.use(ratelimiter);
+})
 
 
 app.get("/user", function (req, res) {
@@ -43,4 +40,4 @@ app.post("/user", function (req, res) {
   res.status(200).json({ msg: "created dummy user" });
 });
 
-app.listen(3000);
+module.exports = app;
